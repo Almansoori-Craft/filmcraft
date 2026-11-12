@@ -117,7 +117,8 @@ const BIN_OPEN: &[(&str, &str)] = &[("openInPlace", "Open in place"), ("openNewT
 
 const PROJECT_OPEN: &[(&str, &str)] = &[("openNewTab", "Open new tab"), ("openNewWindow", "Open in new window")];
 
-const THEMES: &[(&str, &str)] = &[("darkest", "Darkest"), ("dark", "Dark"), ("light", "Light")];
+const THEMES: &[(&str, &str)] =
+    &[("majlisDark", "Al Majlis Dark"), ("majlisLight", "Al Majlis Light"), ("darkest", "Darkest"), ("dark", "Dark"), ("light", "Light")];
 
 pub const APPEARANCE_MODES: &[(&str, &str)] = &[("auto", "Sync with system"), ("dark", "Dark"), ("light", "Light")];
 
@@ -133,9 +134,9 @@ pub const UI_SCALES: &[(&str, &str)] = &[
     ("300", "300%"),
 ];
 
-pub const DARK_THEMES: &[(&str, &str)] = &[("darkest", "Darkest"), ("dark", "Dark")];
+pub const DARK_THEMES: &[(&str, &str)] = &[("majlisDark", "Al Majlis Dark"), ("darkest", "Darkest"), ("dark", "Dark")];
 
-pub const LIGHT_THEMES: &[(&str, &str)] = &[("light", "Light")];
+pub const LIGHT_THEMES: &[(&str, &str)] = &[("majlisLight", "Al Majlis Light"), ("light", "Light")];
 
 const MIXDOWN: &[(&str, &str)] = &[("front", "Front Only"), ("frontRear", "Front + Rear"), ("frontLfe", "Front + LFE"), ("frontRearLfe", "Front + Rear + LFE")];
 
@@ -344,7 +345,7 @@ pub(super) static CATEGORIES: &[Category] = &[
                     b("autoSave.recoveryJournal", "Keep a recovery copy of unsaved changes", true),
                     sub("autoSave.recoveryIntervalSeconds", "Update it at least every", int(1.0, 600.0, "second(s)"), "autoSave.recoveryJournal", true),
                     Row::Note(
-                        "Changes are copied in the background a moment after each edit. If FilmCraft quits unexpectedly, they are offered the next time it starts.",
+                        "Changes are copied in the background a moment after each edit. If Al Majlis Montage quits unexpectedly, they are offered the next time it starts.",
                     ),
                     Row::Custom("autoSaveStatus"),
                 ],
@@ -500,7 +501,7 @@ pub(super) static CATEGORIES: &[Category] = &[
                 ],
             ),
             Row::Note(
-                "The media cache holds render previews of unsaved projects and other files FilmCraft can recreate. Deleting them is always safe; FilmCraft rebuilds them as needed.",
+                "The media cache holds render previews of unsaved projects and other files Al Majlis Montage can recreate. Deleting them is always safe; Al Majlis Montage rebuilds them as needed.",
             ),
         ],
     },
@@ -526,7 +527,7 @@ pub(super) static CATEGORIES: &[Category] = &[
             b("playback.draftDecode", "Draft decoding at reduced playback resolution (H.264: faster, some frames less filtered)", true),
             f("playback.hardwareDecoding", "Hardware decoding", Kind::Choice(HW_DECODE), true),
             Row::Note(
-                "Hardware decoding: Auto uses the system's video decoder (VideoToolbox on macOS, Media Foundation on Windows, VA-API or NVDEC for H.264 and HEVC on Linux) for the streams it supports, and FilmCraft's own decoder for everything else or if the hardware fails. Media that is already open keeps its decoder until it is reopened.",
+                "Hardware decoding: Auto uses the system's video decoder (VideoToolbox on macOS, Media Foundation on Windows, VA-API or NVDEC for H.264 and HEVC on Linux) for the streams it supports, and Al Majlis Montage's own decoder for everything else or if the hardware fails. Media that is already open keeps its decoder until it is reopened.",
             ),
         ],
     },
@@ -535,7 +536,7 @@ pub(super) static CATEGORIES: &[Category] = &[
         title: "Plugins",
         rows: &[
             Row::Group("Plugins", &[b("plugins.developerMode", "Enable developer mode", false)]),
-            Row::Note("No plugins are installed. Changes will take effect the next time you start FilmCraft."),
+            Row::Note("No plugins are installed. Changes will take effect the next time you start Al Majlis Montage."),
         ],
     },
     Category {

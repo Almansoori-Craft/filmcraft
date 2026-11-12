@@ -78,14 +78,28 @@ pub fn show(app: &mut FilmcraftApp, ui: &mut egui::Ui, rect: Rect) {
             }
         }
         let active = group.contains(&app.ui.tool);
-        if active {
+        // Al Majlis: a rounded square (radius 8); selected = accent soft fill with a 1 pt accent
+        // outline, the icon keeps its colour
+        let majlis = t.kind.is_majlis();
+        let radius = t.corner(t.r_control, 4.0);
+        if active && majlis {
+            let sel = Rect::from_center_size(r.center(), vec2(26.0, 26.0));
+            ui.painter().rect(sel, radius, t.accent_soft, egui::Stroke::new(1.0, t.accent), egui::StrokeKind::Inside);
+        } else if active {
             ui.painter().rect_filled(Rect::from_center_size(r.center(), vec2(26.0, 26.0)), 4.0, t.accent);
         } else if resp.hovered() {
-            ui.painter().rect_filled(r, 4.0, t.hover);
+            ui.painter().rect_filled(r, radius, t.hover);
         }
-        icons::paint(ui.painter(), Rect::from_center_size(r.center(), vec2(17.0, 17.0)), current.icon(), if active { egui::Color32::WHITE } else { t.icon });
+        let icon_col = if active && majlis {
+            t.accent_text
+        } else if active {
+            egui::Color32::WHITE
+        } else {
+            t.icon
+        };
+        icons::paint(ui.painter(), Rect::from_center_size(r.center(), vec2(17.0, 17.0)), current.icon(), icon_col);
         if resp.has_focus() {
-            ui.painter().rect_stroke(r.shrink(2.0), 4.0, egui::Stroke::new(1.5, t.focus), egui::StrokeKind::Inside);
+            ui.painter().rect_stroke(r.shrink(2.0), radius, egui::Stroke::new(1.5, t.focus), egui::StrokeKind::Inside);
         }
         if group.len() > 1 {
             let c = r.right_bottom() - vec2(3.0, 3.0);

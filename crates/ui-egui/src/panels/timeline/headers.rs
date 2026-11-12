@@ -20,16 +20,17 @@ fn patch_button(ui: &mut egui::Ui, button: PatchButton<'_>) -> egui::Response {
     let PatchButton { rect: r, clip, label, active: on, show_inactive: show_off, id, tokens: t } = button;
     let resp = ui.interact(r.intersect(clip), id, Sense::click());
     let p = ui.painter().with_clip_rect(clip);
+    let radius = t.corner(t.r_control.min(r.height() / 2.0).floor(), 2.0);
     if on {
-        p.rect_filled(r, 2.0, t.track_target);
+        p.rect_filled(r, radius, t.track_target);
         p.text(r.center(), Align2::CENTER_CENTER, label, Tokens::semibold(10.0), Color32::from_rgb(0xeb, 0xeb, 0xeb));
     } else if show_off {
         if resp.hovered() {
-            p.rect_filled(r, 2.0, t.hover);
+            p.rect_filled(r, radius, t.hover);
         }
         p.text(r.center(), Align2::CENTER_CENTER, label, Tokens::semibold(10.0), t.text_dim);
     } else if resp.hovered() {
-        p.rect_stroke(r, 2.0, Stroke::new(1.0, t.separator), StrokeKind::Inside);
+        p.rect_stroke(r, radius, Stroke::new(1.0, t.separator), StrokeKind::Inside);
     }
     resp
 }

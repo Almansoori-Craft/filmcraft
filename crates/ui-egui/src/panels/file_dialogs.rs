@@ -18,7 +18,11 @@ pub struct FileDialogState {
 }
 
 pub(crate) fn modal_frame(t: &Tokens) -> Frame {
-    Frame::new().fill(t.panel_bg).stroke(Stroke::new(1.0, t.separator)).corner_radius(CornerRadius::same(10)).inner_margin(Margin::same(0))
+    Frame::new()
+        .fill(t.panel_bg)
+        .stroke(Stroke::new(1.0, t.separator))
+        .corner_radius(CornerRadius::same(t.corner(t.r_window, 10.0) as u8))
+        .inner_margin(Margin::same(0))
 }
 
 pub(crate) fn button(app: &mut FilmcraftApp, ui: &mut Ui, id: &str, label: &str, primary: bool) -> bool {
@@ -27,8 +31,21 @@ pub(crate) fn button(app: &mut FilmcraftApp, ui: &mut Ui, id: &str, label: &str,
     let b = egui::Button::new(text)
         .min_size(vec2(88.0, 30.0))
         .corner_radius(CornerRadius::same(15))
-        .fill(if primary { t.accent } else { Color32::TRANSPARENT })
-        .stroke(if primary { Stroke::NONE } else { Stroke::new(1.5, t.text_faint) });
+        .fill(if primary {
+            t.accent
+        } else if t.kind.is_majlis() {
+            t.field_bg
+        } else {
+            Color32::TRANSPARENT
+        })
+        // Al Majlis: secondary = raised fill with a 1 pt hairline
+        .stroke(if primary {
+            Stroke::NONE
+        } else if t.kind.is_majlis() {
+            Stroke::new(1.0, t.hairline_canvas)
+        } else {
+            Stroke::new(1.5, t.text_faint)
+        });
     let r = ui.add(b).on_hover_cursor(egui::CursorIcon::PointingHand);
     app.auto.add(id, r.rect, label);
     r.clicked()
@@ -54,9 +71,9 @@ pub fn show_recovery(app: &mut FilmcraftApp, ctx: &egui::Context) -> bool {
             let name = c["projectName"].as_str().unwrap_or(tl!("Untitled"));
             let when = c["savedAt"].as_str().unwrap_or("");
             let why = if c["cleanExit"].as_bool() == Some(true) {
-                tlf!("FilmCraft was closed while “{name}” had unsaved changes.", name)
+                tlf!("Al Majlis Montage was closed while “{name}” had unsaved changes.", name)
             } else {
-                tlf!("FilmCraft quit unexpectedly while “{name}” had unsaved changes.", name)
+                tlf!("Al Majlis Montage quit unexpectedly while “{name}” had unsaved changes.", name)
             };
             ui.label(RichText::new(why).size(13.5).color(t.text));
             ui.add_space(4.0);

@@ -9,7 +9,7 @@
 //! preference key, e.g. `settings.timeline.stillImageDuration`), `settings.<key>.<value>` for the
 //! items of an open dropdown, `settings.<key>.browse` (folder fields), `settings.<key>.hex`
 //! (colour fields), `settings.labels.colors.<label>.name|color`, `settings.mediaCache.clean`,
-//! `settings.page` (the category's page), `settings.help`, `settings.reset`, `settings.cancel`,
+//! `settings.page` (the category's page), `settings.reset`, `settings.cancel`,
 //! `settings.ok`.
 
 use egui::{Align, Align2, Color32, CornerRadius, Frame, Layout, Margin, Rect, RichText, Sense, Stroke, Ui, vec2};
@@ -251,7 +251,7 @@ fn theme_card(app: &mut FilmcraftApp, ui: &mut Ui, d: &mut SettingsDraft, key: &
     let r = Frame::new()
         .fill(t.field_bg)
         .stroke(Stroke::new(1.0, if active { t.accent } else { t.field_border }))
-        .corner_radius(CornerRadius::same(6))
+        .corner_radius(CornerRadius::same(t.corner(t.r_card, 6.0) as u8))
         .inner_margin(Margin::same(10))
         .show(ui, |ui| {
             ui.vertical(|ui| {
@@ -365,7 +365,11 @@ fn diff(prefix: &str, old: &Value, new: &Value, out: &mut Map<String, Value>) {
 }
 
 fn modal_frame(t: &Tokens) -> Frame {
-    Frame::new().fill(t.panel_bg).stroke(Stroke::new(1.0, t.separator)).corner_radius(CornerRadius::same(10)).inner_margin(Margin::same(0))
+    Frame::new()
+        .fill(t.panel_bg)
+        .stroke(Stroke::new(1.0, t.separator))
+        .corner_radius(CornerRadius::same(t.corner(t.r_window, 10.0) as u8))
+        .inner_margin(Margin::same(0))
 }
 
 fn button(app: &mut FilmcraftApp, ui: &mut Ui, id: &str, label: &str, primary: bool) -> bool {
@@ -374,8 +378,21 @@ fn button(app: &mut FilmcraftApp, ui: &mut Ui, id: &str, label: &str, primary: b
     let b = egui::Button::new(text)
         .min_size(vec2(82.0, 30.0))
         .corner_radius(CornerRadius::same(15))
-        .fill(if primary { t.accent } else { Color32::TRANSPARENT })
-        .stroke(if primary { Stroke::NONE } else { Stroke::new(1.5, t.text_faint) });
+        .fill(if primary {
+            t.accent
+        } else if t.kind.is_majlis() {
+            t.field_bg
+        } else {
+            Color32::TRANSPARENT
+        })
+        // Al Majlis: secondary = raised fill with a 1 pt hairline
+        .stroke(if primary {
+            Stroke::NONE
+        } else if t.kind.is_majlis() {
+            Stroke::new(1.0, t.hairline_canvas)
+        } else {
+            Stroke::new(1.5, t.text_faint)
+        });
     let r = ui.add(b).on_hover_cursor(egui::CursorIcon::PointingHand);
     app.auto.add(id, r.rect, label);
     r.clicked()
@@ -386,7 +403,7 @@ fn group(ui: &mut Ui, t: &Tokens, title: &str, add: impl FnOnce(&mut Ui)) {
     ui.add_space(10.0);
     let r = Frame::new()
         .stroke(Stroke::new(1.0, t.field_border))
-        .corner_radius(CornerRadius::same(4))
+        .corner_radius(CornerRadius::same(t.corner(t.r_card, 4.0) as u8))
         .inner_margin(Margin { left: 14, right: 14, top: 16, bottom: 10 })
         .show(ui, |ui| {
             ui.set_width(ui.available_width());
@@ -759,7 +776,7 @@ fn custom(app: &mut FilmcraftApp, ui: &mut Ui, d: &mut SettingsDraft, name: &str
         "memoryInfo" => {
             let (used, budget) = app.frames.cache_usage();
             note(ui, &t, &tlf!("Decoded frames held for the monitors and thumbnails: {used} of {budget}.", used = mb(used as u64), budget = mb(budget as u64)));
-            note(ui, &t, tl!("FilmCraft keeps the rest of the RAM free for other applications."));
+            note(ui, &t, tl!("Al Majlis Montage keeps the rest of the RAM free for other applications."));
         }
         "mediaCacheInfo" => {
             if d.cache_info.is_null() {
@@ -915,9 +932,7 @@ pub fn show(app: &mut FilmcraftApp, ctx: &egui::Context) -> bool {
         ui.add_space(14.0);
         ui.horizontal(|ui| {
             ui.add_space(20.0);
-            if button(app, ui, "settings.help", tl!("Help"), false) {
-                crate::links::open(app, ctx, &format!("{}/blob/main/docs/project-files.md#settings", crate::links::GITHUB));
-            }
+            // (no Help button: the upstream one opened the original project's GitHub docs)
             if button(app, ui, "settings.reset", tl!("Reset…"), false) {
                 // this category back to its defaults (OK applies it)
                 let defaults = filmcraft_engine::autosave::Preferences::default().to_value();
@@ -1026,8 +1041,8 @@ mod tests {
         let ctx = egui::Context::default();
         let mut app = FilmcraftApp::new(filmcraft_engine::Session::default());
         app.apply_prefs(&ctx);
-        assert_eq!((app.session.prefs.appearance.appearance_mode.as_str(), app.tokens.kind), ("dark", ThemeKind::Dark), "new users keep Darkest");
-        app.session.execute("prefs.set", json!({"values": {"appearance.darkTheme": "dark"}})).unwrap();
+        assert_eq!((app.session.prefs.appearance.appearance_mode.as_str(), app.tokens.kind), ("dark", ThemeKind::MajlisDark), "new users get Al Majlis Dark");
+        app.session.execute("prefs.set", json!({"values": {"appearance.darkTheme": "dark", "appearance.lightTheme": "light"}})).unwrap();
         app.hooks.system_theme = Some(Box::new(|_| Some(egui::Theme::Dark)));
         for (mode, shown) in [("auto", ThemeKind::Medium), ("light", ThemeKind::Light), ("dark", ThemeKind::Medium), ("auto", ThemeKind::Medium)] {
             cycle_appearance(&mut app, &ctx);

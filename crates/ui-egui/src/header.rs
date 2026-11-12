@@ -15,12 +15,14 @@ pub const HEIGHT: f32 = 38.0;
 
 /// Draws the header bar in `rect` and handles its clicks: Home, the mode tabs, the workspace name
 /// and its menu (the workspaces, then Reset to Saved Layout, Save Changes to this Workspace, Save as
-/// New Workspace… and Edit Workspaces…), Discord and the quick actions.
+/// New Workspace… and Edit Workspaces…) and the quick actions.
 pub fn show(app: &mut FilmcraftApp, ui: &mut egui::Ui, rect: Rect) {
     let t = app.tokens;
     let p = ui.painter().clone();
     p.rect_filled(rect, 0.0, t.header_bg);
-    p.line_segment([rect.left_bottom(), rect.right_bottom()], Stroke::new(1.0, Color32::BLACK));
+    // Al Majlis: a hairline, not a black rule, under the header
+    let rule = if t.kind.is_majlis() { t.hairline_canvas } else { Color32::BLACK };
+    p.line_segment([rect.left_bottom(), rect.right_bottom()], Stroke::new(1.0, rule));
     let drag = ui.interact(rect, egui::Id::unique("header-drag"), Sense::click_and_drag());
     if drag.drag_started_by(egui::PointerButton::Primary) {
         ui.ctx().send_viewport_cmd(egui::ViewportCommand::StartDrag);
@@ -35,24 +37,49 @@ pub fn show(app: &mut FilmcraftApp, ui: &mut egui::Ui, rect: Rect) {
     let hresp = ui.interact(home, egui::Id::unique("hdr-home"), Sense::click()).on_hover_text(tl!("Home"));
     app.auto.add("header.home", home, "Home");
     if hresp.hovered() {
-        p.rect_filled(home, 4.0, t.hover);
+        p.rect_filled(home, t.corner(t.r_control, 4.0), t.hover);
     }
     icons::paint(&p, home.shrink(5.0), Icon::Home, if hresp.hovered() { t.text } else { t.text_dim });
     if hresp.clicked() {
         app.ui.mode = Mode::Import;
     }
     x = home.max.x + 16.0;
-    // Mode tabs (14 pt; active = primary text with a 2 pt underline under the label)
-    for (m, label, shown) in [(Mode::Import, "Import", tl!("Import")), (Mode::Edit, "Edit", tl!("Edit")), (Mode::Export, "Export", tl!("Export"))] {
+    // Mode tabs (14 pt; active = primary text with a 2 pt underline under the label). Al Majlis:
+    // pill tabs in a rounded track (raised fill, hairline); the selected one is accent with white
+    // text, the others muted text that turns primary on hover.
+    let majlis = t.kind.is_majlis();
+    let modes = [(Mode::Import, "Import", tl!("Import")), (Mode::Edit, "Edit", tl!("Edit")), (Mode::Export, "Export", tl!("Export"))];
+    if majlis {
+        let mut tx = x;
+        let mut track = Rect::NOTHING;
+        for (_, _, shown) in &modes {
+            let gw = p.layout_no_wrap(shown.to_string(), Tokens::ui(14.0), t.text).size().x;
+            track = track.union(Rect::from_min_size(pos2(tx - 10.0, rect.min.y + 6.0), vec2(gw + 20.0, rect.height() - 12.0)));
+            tx += gw + 24.0;
+        }
+        let track = track.expand2(vec2(3.0, 3.0));
+        p.rect(track, track.height() / 2.0, t.field_bg, Stroke::new(1.0, t.hairline_canvas), egui::StrokeKind::Inside);
+    }
+    for (m, label, shown) in modes {
         let active = app.ui.mode == m;
         let galley = p.layout_no_wrap(shown.to_string(), Tokens::ui(14.0), if active { t.tab_text_active } else { t.tab_text });
-        let r = Rect::from_min_size(pos2(x - 6.0, rect.min.y + 6.0), vec2(galley.size().x + 12.0, rect.height() - 12.0));
+        let pad = if majlis { 10.0 } else { 6.0 };
+        let r = Rect::from_min_size(pos2(x - pad, rect.min.y + 6.0), vec2(galley.size().x + 2.0 * pad, rect.height() - 12.0));
         let resp = ui.interact(r, egui::Id::unique(("mode", label)), Sense::click());
         app.auto.add(&format!("header.mode.{}", label.to_ascii_lowercase()), r, label);
-        let col = if active || resp.hovered() { t.tab_text_active } else { t.tab_text };
+        let col = if majlis && active {
+            Color32::WHITE
+        } else if active || resp.hovered() {
+            t.tab_text_active
+        } else {
+            t.tab_text
+        };
         let gw = galley.size().x;
+        if majlis && active {
+            p.rect_filled(r, r.height() / 2.0, if resp.hovered() { t.accent_hover } else { t.accent });
+        }
         p.galley_with_override_text_color(pos2(x, rect.center().y - galley.size().y / 2.0), galley, col);
-        if active {
+        if active && !majlis {
             p.line_segment([pos2(x, rect.min.y + 29.0), pos2(x + gw, rect.min.y + 29.0)], Stroke::new(2.0, t.tab_text_active));
         }
         if resp.clicked() {
@@ -81,7 +108,7 @@ pub fn show(app: &mut FilmcraftApp, ui: &mut egui::Ui, rect: Rect) {
         let resp = ui.interact(r, egui::Id::unique(("hdr", id)), Sense::click()).on_hover_text(tip);
         app.auto.add(&format!("header.{id}"), r, tip);
         if resp.hovered() {
-            ui.painter().rect_filled(r, 4.0, t.hover);
+            ui.painter().rect_filled(r, t.corner(t.r_control, 4.0), t.hover);
         }
         icons::paint(ui.painter(), r.shrink(6.0), icon, if resp.hovered() { t.text } else { t.text_dim });
         resp
@@ -126,20 +153,12 @@ pub fn show(app: &mut FilmcraftApp, ui: &mut egui::Ui, rect: Rect) {
     let wresp = ui.interact(wr, egui::Id::unique("hdr-ws-name"), Sense::click());
     app.auto.add("header.workspaceName", wr, &ws);
     p.galley_with_override_text_color(pos2(wr.min.x + 4.0, rect.center().y - wg.size().y / 2.0), wg, if wresp.hovered() { t.text } else { t.text_dim });
-    // Community: a labelled Discord button, always one click away.
+    // The document title, centred in the space between the left cluster and the workspace name
+    // (Al Majlis Montage has no community button there).
     {
-        let label = "Discord";
-        let g = p.layout_no_wrap(label.to_string(), Tokens::ui(12.0), Color32::WHITE);
-        let w = g.size().x + 34.0;
-        let r = Rect::from_min_size(pos2(wr.min.x - w - 14.0, rect.center().y - 12.0), vec2(w, 24.0));
-        let resp = ui.interact(r, egui::Id::unique("hdr-discord"), Sense::click()).on_hover_text(tl!("Join the ArtCraft Discord (discord.gg/artcraft)"));
-        app.auto.add("header.discord", r, "Join the ArtCraft Discord");
-        ui.painter().rect_filled(r, 12.0, if resp.hovered() { t.accent_hover } else { t.accent });
-        icons::paint(ui.painter(), Rect::from_center_size(pos2(r.min.x + 14.0, r.center().y), vec2(14.0, 14.0)), Icon::Chat, Color32::WHITE);
-        ui.painter().galley(pos2(r.min.x + 25.0, r.center().y - g.size().y / 2.0), g, Color32::WHITE);
         // Localized menus and user titles can be wider than English. Use the actual gap.
         let left = left_end + 12.0;
-        let right = r.min.x - 12.0;
+        let right = wr.min.x - 14.0;
         if right > left + 40.0 {
             let mut job = egui::text::LayoutJob::simple_singleline(title, Tokens::ui(14.0), t.tab_text_active);
             job.wrap.max_width = right - left;
@@ -152,10 +171,6 @@ pub fn show(app: &mut FilmcraftApp, ui: &mut egui::Ui, rect: Rect) {
                 galley,
                 t.tab_text_active,
             );
-        }
-
-        if resp.clicked() {
-            crate::links::open(app, ui.ctx(), crate::links::DISCORD);
         }
     }
     let popup_id = egui::Id::unique("workspaces-popup");

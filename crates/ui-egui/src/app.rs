@@ -34,7 +34,7 @@ impl FilmcraftApp {
         Self {
             session,
             ui: UiState { language, ..UiState::default() },
-            tokens: Tokens::for_kind(ThemeKind::Dark),
+            tokens: Tokens::for_kind(ThemeKind::default()),
             frames,
             playback: Playback { speed: 1.0, ..Default::default() },
             source_playback: Default::default(),

@@ -131,12 +131,10 @@ pub const COMMANDS: &[UiCommand] = &[
     uic!("mixer.showHideTracks", "Show/Hide Tracks…", [], None),
     uic!("mixer.meterInputOnly", "Meter Input(s) Only", [], None),
     uic!("graphics.beginTextEditing", "Begin Text Editing for a Graphic Layer", [], Some("Cmd+Alt+'")),
-    uic!("help.filmcraftHelp", "FilmCraft Help…", ["Help"], Some("F1")),
-    uic!("app.quit", "Quit FilmCraft", [], Some("Cmd+Q")),
+    uic!("help.filmcraftHelp", "Al Majlis Montage Help…", ["Help"], Some("F1")),
+    uic!("app.quit", "Quit Al Majlis Montage", [], Some("Cmd+Q")),
 ];
 
-/// FilmCraft's documentation (Help ▸ FilmCraft Help…, F1).
-pub const HELP_URL: &str = "https://github.com/storytold/filmcraft/tree/main/docs";
 
 const HEIGHT_STEP: f32 = 12.0;
 const MIN_TRACK_H: f32 = 24.0;
@@ -214,9 +212,11 @@ pub fn route(app: &mut FilmcraftApp, ctx: &egui::Context, id: &str, params: &Val
         "mixer.showHideTracks" => Ok(crate::panels::mixer::open_show_hide_tracks(app, ctx)),
         "mixer.meterInputOnly" => crate::panels::mixer::set_meter_input_only(app, params),
         "graphics.beginTextEditing" => begin_text_editing(app),
+        // Help ▸ Al Majlis Montage Help… (F1): the Keyboard Shortcuts reference (the upstream
+        // documentation link is not used)
         "help.filmcraftHelp" => {
-            crate::links::open(app, ctx, HELP_URL);
-            Ok(json!({"url": HELP_URL}))
+            crate::panels::shortcuts_dialog::open(app);
+            Ok(Value::Null)
         }
         "app.quit" => {
             ctx.send_viewport_cmd(egui::ViewportCommand::Close);

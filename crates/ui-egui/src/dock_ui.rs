@@ -450,6 +450,12 @@ fn dock_style(ui: &egui::Ui, t: &Tokens) -> DockStyle {
     style.inactive_text = t.tab_text;
     style.accent = t.focus;
     style.font = Tokens::ui(12.0);
+    if t.kind.is_majlis() {
+        // Al Majlis: hairline outlines; the tab strip is the raised track, the selected tab the
+        // panel surface (craft-ui draws the tabs themselves square)
+        style.border = Stroke::new(1.0, t.hairline_canvas);
+        style.floating_stroke = Stroke::new(1.0, t.hairline);
+    }
     style
 }
 
@@ -492,9 +498,24 @@ impl DockContent<PanelKind> for FilmContent<'_> {
         self.app.auto.viewport = egui::ViewportId::ROOT;
         // The body fills its frame; allocating it lets a floated panel take its full size.
         ui.allocate_rect(ui.max_rect(), Sense::hover());
+        // Al Majlis: a docked panel (its tab strip and body) is a soft card, radius 12 with a
+        // hairline. craft-ui paints groups square, so the corners are masked with the app
+        // background around the rounded outline. Floating panels keep their window frame.
+        let card = t.kind.is_majlis() && ui.ctx().viewport_id() == egui::ViewportId::ROOT && self.app.ui.dock.is_docked(*panel);
+        let group = Rect::from_min_max(egui::pos2(frame.min.x, frame.min.y - t.tab_h), frame.max);
+        if card {
+            let p = egui::Painter::new(ui.ctx().clone(), ui.layer_id(), group.intersect(ui.ctx().content_rect()));
+            p.rect_stroke(group, t.r_card, Stroke::new((t.r_card * 0.5).ceil(), t.app_bg), StrokeKind::Outside);
+            p.rect_stroke(group, t.r_card, Stroke::new(1.0, t.hairline_canvas), StrokeKind::Inside);
+        }
         // Painted after the body so child backgrounds cannot hide the focus outline (#1075).
         if self.app.ui.focused == *panel {
-            ui.painter().rect_stroke(frame, 0.0, Stroke::new(1.0, t.focus), StrokeKind::Inside);
+            if card {
+                let p = egui::Painter::new(ui.ctx().clone(), ui.layer_id(), group.intersect(ui.ctx().content_rect()));
+                p.rect_stroke(group, t.r_card, Stroke::new(1.0, t.focus), StrokeKind::Inside);
+            } else {
+                ui.painter().rect_stroke(frame, 0.0, Stroke::new(1.0, t.focus), StrokeKind::Inside);
+            }
         }
     }
 

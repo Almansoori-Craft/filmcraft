@@ -2,7 +2,7 @@
 //! floating windows and gestures (`dock_ui.rs` draws it); this module names the
 //! panels, builds the built-in workspaces and draws the Timeline's sequence tabs.
 
-use egui::{Align2, Rect, Sense, Stroke, StrokeKind, pos2, vec2};
+use egui::{Align2, Color32, Rect, Sense, Stroke, StrokeKind, pos2, vec2};
 use serde::{Deserialize, Serialize};
 
 use craft_ui::docking::{Action, Floating, Node};
@@ -720,7 +720,19 @@ pub fn sequence_tabs(ui: &mut egui::Ui, strip: Rect, seqs: &SeqTabs, t: &Tokens,
         }
         reg.add_response(&format!("timeline.tab.{id}"), &resp, name);
         let label_x = tab_rect.min.x + 8.0 + close_w;
-        let col = if is_active || resp.hovered() { t.tab_text_active } else { t.tab_text };
+        // Al Majlis: the open sequence is an accent pill with white text; no underline
+        let pill = t.kind.is_majlis() && is_active;
+        if pill {
+            let r = tab_rect.shrink2(vec2(0.0, (tab_rect.height() - 22.0).max(0.0) / 2.0));
+            painter.rect_filled(r, r.height() / 2.0, t.accent);
+        }
+        let col = if pill {
+            Color32::WHITE
+        } else if is_active || resp.hovered() {
+            t.tab_text_active
+        } else {
+            t.tab_text
+        };
         let label_w = galley.size().x;
         painter.galley_with_override_text_color(pos2(label_x, text_y - galley.size().y / 2.0), galley, col);
         let mut closed = false;
@@ -730,7 +742,13 @@ pub fn sequence_tabs(ui: &mut egui::Ui, strip: Rect, seqs: &SeqTabs, t: &Tokens,
             let cresp = ui.interact(cr.expand(4.0), egui::Id::unique(("tab-close", *id)), Sense::click());
             cresp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, cresp.enabled(), "close sequence"));
             reg.add_response(&format!("timeline.tab.{id}.close"), &cresp, "close sequence");
-            let cc = if cresp.hovered() { t.tab_text_active } else { t.tab_text };
+            let cc = if pill {
+                Color32::WHITE
+            } else if cresp.hovered() {
+                t.tab_text_active
+            } else {
+                t.tab_text
+            };
             painter.line_segment([cr.left_top(), cr.right_bottom()], Stroke::new(1.2, cc));
             painter.line_segment([cr.right_top(), cr.left_bottom()], Stroke::new(1.2, cc));
             paint_widget_focus(&painter, &cresp, t);
@@ -738,8 +756,10 @@ pub fn sequence_tabs(ui: &mut egui::Ui, strip: Rect, seqs: &SeqTabs, t: &Tokens,
                 actions.push(SeqAction::Close(*id));
                 closed = true;
             }
-            let uy = strip.max.y - 2.0;
-            painter.line_segment([pos2(label_x, uy), pos2(label_x + label_w, uy)], Stroke::new(1.0, t.tab_text_active));
+            if !pill {
+                let uy = strip.max.y - 2.0;
+                painter.line_segment([pos2(label_x, uy), pos2(label_x + label_w, uy)], Stroke::new(1.0, t.tab_text_active));
+            }
         }
         if (resp.clicked() || resp.drag_started_by(egui::PointerButton::Primary)) && !closed && !is_active {
             actions.push(SeqAction::Open(*id));
@@ -802,7 +822,7 @@ pub fn sequence_tabs(ui: &mut egui::Ui, strip: Rect, seqs: &SeqTabs, t: &Tokens,
 
 pub(crate) fn paint_widget_focus(painter: &egui::Painter, response: &egui::Response, tokens: &Tokens) {
     if response.has_focus() {
-        painter.rect_stroke(response.rect.shrink(2.0), 2.0, Stroke::new(1.5, tokens.focus), StrokeKind::Inside);
+        painter.rect_stroke(response.rect.shrink(2.0), tokens.corner(tokens.r_control, 2.0), Stroke::new(1.5, tokens.focus), StrokeKind::Inside);
     }
 }
 

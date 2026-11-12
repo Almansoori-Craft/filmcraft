@@ -70,9 +70,9 @@ pub struct AppearancePrefs {
     pub color_theme: String,
     /// "Appearance Mode": `auto` (follow the operating system) | `dark` (default) | `light`.
     pub appearance_mode: String,
-    /// The theme shown in dark mode: `darkest` (default) | `dark`.
+    /// The theme shown in dark mode: `majlisDark` (default) | `darkest` | `dark`.
     pub dark_theme: String,
-    /// The theme shown in light mode: `light`.
+    /// The theme shown in light mode: `majlisLight` (default) | `light`.
     pub light_theme: String,
     /// Theme shortcuts for the header context menu.
     pub favorite_themes: Vec<String>,
@@ -91,10 +91,11 @@ pub struct AppearancePrefs {
 impl Default for AppearancePrefs {
     fn default() -> Self {
         Self {
-            color_theme: "darkest".into(),
+            // Al Majlis: a fresh profile shows the Al Majlis look (Al Majlis Dark, Al Majlis Light)
+            color_theme: "majlisDark".into(),
             appearance_mode: "dark".into(),
-            dark_theme: "darkest".into(),
-            light_theme: "light".into(),
+            dark_theme: "majlisDark".into(),
+            light_theme: "majlisLight".into(),
             favorite_themes: Vec::new(),
             accessible_contrast: false,
             highlight_color: DEFAULT_HIGHLIGHT.into(),

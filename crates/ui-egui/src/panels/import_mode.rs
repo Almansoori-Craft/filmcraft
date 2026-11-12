@@ -30,48 +30,27 @@ pub fn show(app: &mut FilmcraftApp, ui: &mut egui::Ui, rect: Rect) {
         let r = Rect::from_min_size(rect.min + vec2(24.0 + i as f32 * (cw + 16.0), 90.0), vec2(cw, 150.0));
         let resp = ui.interact(r, egui::Id::unique(("imp", *cmd)), Sense::click());
         app.auto.add(&format!("import.{cmd}"), r, title);
-        ui.painter().rect_filled(r, 8.0, if resp.hovered() { t.hover } else { t.tl_header_bg });
+        // Al Majlis: soft cards (radius 12, raised fill, 1 pt hairline)
+        if t.kind.is_majlis() {
+            ui.painter().rect(r, t.r_card, if resp.hovered() { t.pressed } else { t.field_bg }, egui::Stroke::new(1.0, t.hairline), egui::StrokeKind::Inside);
+        } else {
+            ui.painter().rect_filled(r, 8.0, if resp.hovered() { t.hover } else { t.tl_header_bg });
+        }
         ui.painter().text(r.min + vec2(16.0, 110.0), Align2::LEFT_CENTER, *title, Tokens::semibold(14.0), t.text);
         ui.painter().text(r.min + vec2(16.0, 132.0), Align2::LEFT_CENTER, *sub, Tokens::ui(11.5), t.text_dim);
         crate::icons::paint(
             ui.painter(),
             Rect::from_min_size(r.min + vec2(16.0, 18.0), vec2(56.0, 56.0)),
             [crate::icons::Icon::Folder, crate::icons::Icon::Film, crate::icons::Icon::Sequence, crate::icons::Icon::Grid][i],
-            Color32::from_rgb(140, 150, 255),
+            if t.kind.is_majlis() { t.accent } else { Color32::from_rgb(140, 150, 255) },
         );
         if resp.clicked() {
             let _ = crate::menus::invoke(app, &ctx, cmd, json!({}));
             app.ui.mode = crate::state::Mode::Edit;
         }
     }
-    let y = recent(app, ui, rect, 90.0 + 150.0 + 36.0);
-    // Community and project links.
-    // ArtCraft wordmark (first-party trademark, docs/brand/), then the section title.
-    let logo = crate::brand::paint_wordmark(ui, rect.min + vec2(24.0, y), 15.0, app.ui.dark);
-    let tx = logo.map_or(rect.min.x + 24.0, |r| r.max.x + 12.0);
-    ui.painter().text(pos2(tx, rect.min.y + y), Align2::LEFT_CENTER, tl!("Community"), Tokens::semibold(15.0), t.text);
-    let mut x = rect.min.x + 24.0;
-    for (i, (id, label, url)) in crate::links::ALL.iter().take(4).enumerate() {
-        let primary = i == 0;
-        let label = if primary { tl!("Join us on Discord") } else { crate::i18n::t(label) };
-        let g = ui.painter().layout_no_wrap(label.to_string(), Tokens::ui(13.0), t.text);
-        let r = Rect::from_min_size(pos2(x, rect.min.y + y + 18.0), vec2(g.size().x + 44.0, 34.0));
-        let resp = ui.interact(r, egui::Id::unique(("imp-link", *id)), Sense::click()).on_hover_text(*url);
-        app.auto.add(&format!("import.link.{}", id.trim_start_matches("help.")), r, label);
-        let (bg, fg) = if primary {
-            (if resp.hovered() { t.accent_hover } else { t.accent }, Color32::WHITE)
-        } else {
-            (if resp.hovered() { t.hover } else { t.tl_header_bg }, t.text)
-        };
-        ui.painter().rect_filled(r, 8.0, bg);
-        let icon = [crate::icons::Icon::Chat, crate::icons::Icon::Globe, crate::icons::Icon::Globe, crate::icons::Icon::Code][i];
-        crate::icons::paint(ui.painter(), Rect::from_center_size(pos2(r.min.x + 20.0, r.center().y), vec2(16.0, 16.0)), icon, fg);
-        ui.painter().galley(pos2(r.min.x + 34.0, r.center().y - g.size().y / 2.0), g, fg);
-        if resp.clicked() {
-            crate::links::open(app, &ctx, url);
-        }
-        x = r.max.x + 12.0;
-    }
+    // the recent projects; Al Majlis Montage has no community or project links here
+    recent(app, ui, rect, 90.0 + 150.0 + 36.0);
 }
 
 /// Recent projects listed on Home, as in File ▸ Open Recent.
@@ -95,7 +74,7 @@ fn recent(app: &mut FilmcraftApp, ui: &mut egui::Ui, rect: Rect, y: f32) -> f32 
         let resp = ui.interact(row, egui::Id::unique(("imp-recent", i)), Sense::click()).on_hover_text(path.as_str());
         app.auto.add(&format!("import.recent.{i}"), row, &name);
         if resp.hovered() {
-            ui.painter().rect_filled(row, 4.0, t.hover);
+            ui.painter().rect_filled(row, t.corner(t.r_control, 4.0), t.hover);
         }
         let p = ui.painter().with_clip_rect(row);
         crate::icons::paint(&p, Rect::from_center_size(pos2(row.min.x + 16.0, row.center().y), vec2(14.0, 14.0)), crate::icons::Icon::Sequence, t.text_dim);

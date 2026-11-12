@@ -10,37 +10,58 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ThemeKind {
-    /// Premiere-style darkest (default).
-    #[default]
+    /// Premiere-style darkest.
     Dark,
     /// Slightly lighter grey panels (Premiere's brightness slider mid position).
     Medium,
     Light,
+    /// Al Majlis, light (`docs/craft/MAJLIS_LOOK.md` in Al Majlis).
+    MajlisLight,
+    /// Al Majlis, dark: the look of a fresh profile.
+    #[default]
+    MajlisDark,
 }
 
 impl ThemeKind {
-    /// Settings ▸ Appearance ▸ Color Theme value (`darkest`, `dark`, `light`).
+    /// Settings ▸ Appearance ▸ Color Theme value (`darkest`, `dark`, `light`, `majlisLight`,
+    /// `majlisDark`).
     pub fn pref_name(self) -> &'static str {
         match self {
             ThemeKind::Dark => "darkest",
             ThemeKind::Medium => "dark",
             ThemeKind::Light => "light",
+            ThemeKind::MajlisLight => "majlisLight",
+            ThemeKind::MajlisDark => "majlisDark",
         }
     }
     pub fn from_pref(s: &str) -> ThemeKind {
         match s {
             "dark" => ThemeKind::Medium,
             "light" => ThemeKind::Light,
-            _ => ThemeKind::Dark,
+            "darkest" => ThemeKind::Dark,
+            "majlisLight" => ThemeKind::MajlisLight,
+            _ => ThemeKind::MajlisDark,
         }
     }
+    /// A theme by name, for `view.theme.<name>` and `ui.set {"theme": name}` (any case):
+    /// `majlisLight` and `majlisDark` select the Al Majlis looks.
     pub fn from_name(s: &str) -> Option<ThemeKind> {
         match s.to_ascii_lowercase().as_str() {
             "dark" | "darkest" => Some(ThemeKind::Dark),
             "medium" | "grey" | "gray" => Some(ThemeKind::Medium),
             "light" => Some(ThemeKind::Light),
+            "majlislight" | "majlis-light" | "majlis_light" => Some(ThemeKind::MajlisLight),
+            "majlisdark" | "majlis-dark" | "majlis_dark" | "majlis" => Some(ThemeKind::MajlisDark),
             _ => None,
         }
+    }
+    /// A light theme (egui's light visuals, dark text).
+    pub fn is_light(self) -> bool {
+        matches!(self, ThemeKind::Light | ThemeKind::MajlisLight)
+    }
+    /// One of the Al Majlis looks: rounded shapes, pill tabs and buttons, hairline outlines.
+    pub fn is_majlis(self) -> bool {
+        matches!(self, ThemeKind::MajlisLight | ThemeKind::MajlisDark)
     }
 }
 
@@ -143,8 +164,24 @@ pub struct Tokens {
     pub monitor_bg: Color32,
     pub timecode: Color32,
     pub danger: Color32,
+    /// Selected tool / hovered accent item fill (Al Majlis: accent at 10 % / 16 %).
+    pub accent_soft: Color32,
+    /// Small accent text on the panel surface.
+    pub accent_text: Color32,
+    /// 1 pt outline on a panel surface (Al Majlis `--hairline`).
+    pub hairline: Color32,
+    /// 1 pt outline on the app background (around panels and cards).
+    pub hairline_canvas: Color32,
     pub radius: f32,
     pub radius_sm: f32,
+    /// Shapes. Tool / icon buttons, fields and menu items (Al Majlis: 8).
+    pub r_control: f32,
+    /// Panels and cards (Al Majlis: 12; Premiere: square).
+    pub r_card: f32,
+    /// Windows, dialogs and popovers (Al Majlis: 16).
+    pub r_window: f32,
+    /// Menus (Al Majlis: 12).
+    pub r_menu: f32,
     pub gap: f32,
     pub tab_h: f32,
 }
@@ -236,12 +273,21 @@ impl Tokens {
             monitor_bg: Color32::from_rgb(0x1d, 0x1d, 0x1d),
             timecode: Color32::from_rgb(0x40, 0x96, 0xf3),
             danger: Color32::from_rgb(0xdc, 0x51, 0x3d),
+            accent_soft: Color32::from_rgb(0x3a, 0x3a, 0x3a),
+            accent_text: Color32::from_rgb(0x40, 0x96, 0xf3),
+            hairline: Color32::from_rgb(0x30, 0x30, 0x30),
+            hairline_canvas: Color32::from_rgb(0x30, 0x30, 0x30),
             radius: 0.0,
             radius_sm: 4.0,
+            r_control: 4.0,
+            r_card: 0.0,
+            r_window: 6.0,
+            r_menu: 6.0,
             gap: 4.0,
             tab_h: 32.0,
         };
         match kind {
+            ThemeKind::MajlisLight | ThemeKind::MajlisDark => Self::majlis(kind, dark),
             ThemeKind::Dark => dark,
             ThemeKind::Medium => Tokens {
                 app_bg: Color32::from_rgb(20, 20, 20),
@@ -328,15 +374,152 @@ impl Tokens {
                 tl_header_bg: Color32::from_rgb(214, 214, 214),
                 tl_ruler_bg: Color32::from_rgb(226, 226, 226),
                 tl_ruler_text: Color32::from_rgb(80, 80, 80),
+                accent_soft: Color32::from_rgb(196, 196, 196),
+                hairline: Color32::from_rgb(200, 200, 200),
+                hairline_canvas: Color32::from_rgb(170, 170, 170),
                 ..dark
             },
         }
+    }
+
+    /// The Al Majlis looks: exact colours and shapes of Al Majlis' look sheet
+    /// (`docs/craft/MAJLIS_LOOK.md`, from Al Majlis' `src/app/globals.css`). Audio meters keep their
+    /// green / yellow / red, the render bar its colours, and the monitors their neutral grey
+    /// surround so the picture is judged as before.
+    fn majlis(kind: ThemeKind, base: Tokens) -> Tokens {
+        let hex = |v: u32| Color32::from_rgb((v >> 16) as u8, (v >> 8) as u8, v as u8);
+        let light = kind == ThemeKind::MajlisLight;
+        let pick = |l: u32, d: u32| hex(if light { l } else { d });
+        let canvas = pick(0xF2F1EE, 0x0D0D0F);
+        let surface = pick(0xFFFFFF, 0x17171A);
+        let raised = pick(0xF6F5F3, 0x202024);
+        let pressed = pick(0xE8E7E3, 0x2E2E34);
+        let hairline = pick(0xEEEEEE, 0x29292B);
+        let hairline_canvas = pick(0xE2E1DE, 0x202022);
+        let text = pick(0x141416, 0xF4F4F2);
+        let secondary = pick(0x5B5B5C, 0xB2B2B1);
+        let muted = pick(0x7E7E7F, 0x909091);
+        let accent = hex(0x2563EB);
+        let accent_hover = pick(0x1D4ED8, 0x3B82F6);
+        let accent_text = pick(0x1D4ED8, 0x93C5FD);
+        let accent_soft = pick(0xE9EFFD, 0x19233B);
+        let focus = if light { Color32::from_rgba_unmultiplied(0x25, 0x63, 0xEB, 115) } else { Color32::from_rgba_unmultiplied(0x60, 0xA5, 0xFA, 128) };
+        let danger = pick(0xB42318, 0xFDA29B);
+        Tokens {
+            kind,
+            app_bg: canvas,
+            header_bg: raised,
+            panel_bg: surface,
+            tab_bg: raised,
+            tab_text: muted,
+            tab_text_active: text,
+            focus,
+            accent,
+            accent_hover,
+            text,
+            text_dim: secondary,
+            text_faint: muted,
+            icon: secondary,
+            icon_active: text,
+            hover: raised,
+            pressed,
+            field_bg: raised,
+            field_border: hairline,
+            separator: hairline,
+            row_alt: raised,
+            row_selected: accent_soft,
+            hot_text: accent_text,
+            pill_active_bg: accent_soft,
+            clip_bar_bg: accent_soft,
+            control_surface: raised,
+            control_well: pressed,
+            control_border: hairline_canvas,
+            control_handle_bg: surface,
+            control_handle: text,
+            control_handle_dim: secondary,
+            plot_bg: if light { raised } else { canvas },
+            plot_grid: hairline,
+            plot_axis: pressed,
+            plot_handle: text,
+            plot_handle_dim: muted,
+            meter_bg: if light { pressed } else { canvas },
+            meter_readout_bg: raised,
+            meter_clip_off: pressed,
+            panner_bg: pressed,
+            panner_border: muted,
+            panner_speaker: secondary,
+            fader_knob: muted,
+            eq_track: pressed,
+            eq_tick: muted,
+            eq_knob: secondary,
+            eq_knob_active: text,
+            eq_node: text,
+            eq_node_off: muted,
+            crossover_handle: text,
+            keyframe_plot_bg: if light { raised } else { canvas },
+            keyframe_plot_grid: hairline,
+            keyframe_plot_axis: pressed,
+            keyframe_handle: text,
+            switch_fill: accent,
+            switch_knob: Color32::WHITE,
+            switch_border: muted,
+            slider_disabled_track: pressed,
+            slider_disabled_knob: muted,
+            button_hover: pressed,
+            button_border: hairline,
+            caption_track_bg: if light { Color32::from_rgb(222, 215, 233) } else { Color32::from_rgb(0x23, 0x20, 0x2a) },
+            scroll_thumb: pressed,
+            scroll_thumb_hover: muted,
+            vertical_scroll_thumb: pressed,
+            disabled_clip_bg: pressed,
+            tl_bg: surface,
+            tl_track_bg: surface,
+            tl_track_bg_alt: surface,
+            tl_header_bg: surface,
+            tl_ruler_bg: surface,
+            tl_ruler_tick: muted,
+            tl_ruler_text: secondary,
+            playhead: accent,
+            track_target: accent,
+            in_out_shade: pressed,
+            clip_selected_border: text,
+            // the monitors keep a neutral grey surround (the picture is judged against it)
+            monitor_bg: base.monitor_bg,
+            timecode: accent_text,
+            danger,
+            accent_soft,
+            accent_text,
+            hairline,
+            hairline_canvas,
+            radius: 0.0,
+            radius_sm: 8.0,
+            r_control: 8.0,
+            r_card: 12.0,
+            r_window: 16.0,
+            r_menu: 12.0,
+            ..base
+        }
+    }
+
+    /// A corner radius: `majlis` (one of the shape fields) in the Al Majlis looks, the site's own
+    /// `premiere` number in the others.
+    pub fn corner(&self, majlis: f32, premiere: f32) -> f32 {
+        if self.kind.is_majlis() { majlis } else { premiere }
+    }
+
+    /// A pill (half the height `h`) in the Al Majlis looks, `premiere` in the others.
+    pub fn pill(&self, h: f32, premiere: f32) -> f32 {
+        if self.kind.is_majlis() { (h / 2.0).floor() } else { premiere }
     }
 
     /// Settings ▸ Appearance on top of a theme: the highlight colour (selections, primary buttons,
     /// the focus outline, the playhead, timecodes, drag values and track targeting) and accessible
     /// colour contrast (brighter secondary text and borders).
     pub fn with_appearance(mut self, highlight: Option<[u8; 3]>, accessible_contrast: bool) -> Self {
+        // The Al Majlis looks bring their own accent: the stock highlight (Premiere's blue, which
+        // every profile has unless the user picked another) leaves it as designed.
+        let stock = filmcraft_engine::settings::parse_hex(filmcraft_engine::settings::DEFAULT_HIGHLIGHT);
+        let highlight = highlight.filter(|_| !(self.kind.is_majlis() && highlight == stock));
         if let Some([r, g, b]) = highlight {
             let c = Color32::from_rgb(r, g, b);
             // A highlight of the user's own also colours the theme's other blues: the same hue, as
@@ -360,7 +543,7 @@ impl Tokens {
             self.accent_hover = Color32::from_rgb(lift(r), lift(g), lift(b));
         }
         if accessible_contrast {
-            if self.kind == ThemeKind::Light {
+            if self.kind.is_light() {
                 self.text_dim = Color32::from_rgb(40, 40, 40);
                 self.text_faint = Color32::from_rgb(80, 80, 80);
                 self.field_border = Color32::from_rgb(110, 110, 110);
@@ -458,7 +641,8 @@ fn add_craft_fonts(fonts: &mut FontDefinitions) {
 }
 
 pub fn apply_visuals(ctx: &egui::Context, t: &Tokens) {
-    let light = t.kind == ThemeKind::Light;
+    let light = t.kind.is_light();
+    let majlis = t.kind.is_majlis();
     // FilmCraft decides between light and dark itself (Settings ▸ Appearance ▸ Appearance Mode), so
     // egui must not switch to its other built-in style when the system appearance changes.
     ctx.set_theme(if light { egui::Theme::Light } else { egui::Theme::Dark });
@@ -471,13 +655,18 @@ pub fn apply_visuals(ctx: &egui::Context, t: &Tokens) {
     v.selection.bg_fill = t.accent;
     v.selection.stroke = Stroke::new(1.0, Color32::WHITE);
     v.hyperlink_color = t.accent;
-    v.window_stroke = Stroke::new(1.0, t.field_border);
-    v.window_corner_radius = egui::CornerRadius::same(6);
-    v.menu_corner_radius = egui::CornerRadius::same(6);
-    v.popup_shadow = egui::epaint::Shadow { offset: [0, 4], blur: 16, spread: 0, color: Color32::from_black_alpha(140) };
+    v.window_stroke = Stroke::new(1.0, if majlis { t.hairline } else { t.field_border });
+    v.window_corner_radius = egui::CornerRadius::same(t.r_window as u8);
+    v.menu_corner_radius = egui::CornerRadius::same(t.r_menu as u8);
+    v.popup_shadow = if majlis && light {
+        // Al Majlis: a soft shadow, deeper in dark
+        egui::epaint::Shadow { offset: [0, 8], blur: 24, spread: 0, color: Color32::from_black_alpha(36) }
+    } else {
+        egui::epaint::Shadow { offset: [0, 4], blur: 16, spread: 0, color: Color32::from_black_alpha(140) }
+    };
     v.window_shadow = v.popup_shadow;
     for w in [&mut v.widgets.noninteractive, &mut v.widgets.inactive, &mut v.widgets.hovered, &mut v.widgets.active, &mut v.widgets.open] {
-        w.corner_radius = egui::CornerRadius::same(t.radius_sm as u8);
+        w.corner_radius = egui::CornerRadius::same(t.r_control as u8);
     }
     v.widgets.noninteractive.bg_fill = t.panel_bg;
     v.widgets.noninteractive.weak_bg_fill = t.panel_bg;
@@ -496,6 +685,25 @@ pub fn apply_visuals(ctx: &egui::Context, t: &Tokens) {
     v.widgets.active.fg_stroke = Stroke::new(1.0, t.tab_text_active);
     v.widgets.open.bg_fill = t.hover;
     v.widgets.open.weak_bg_fill = t.hover;
+    if majlis {
+        // Al Majlis: fields and secondary buttons are raised with a hairline; hover and press
+        // darken them a step; sliders fill with the accent; scroll bars are thin pills.
+        v.widgets.hovered.bg_fill = t.pressed;
+        v.widgets.hovered.weak_bg_fill = t.pressed;
+        v.widgets.hovered.bg_stroke = Stroke::new(1.0, t.hairline);
+        v.widgets.active.bg_stroke = Stroke::new(1.0, t.hairline);
+        v.widgets.open.bg_fill = t.pressed;
+        v.widgets.open.weak_bg_fill = t.pressed;
+        v.widgets.noninteractive.bg_stroke = Stroke::new(1.0, t.hairline);
+        v.slider_trailing_fill = true;
+        // egui outlines a focused field with the selection stroke, which also colours selected
+        // text: accent text on the accent soft fill keeps both readable (a white stroke would
+        // hide the focus outline on the light surface)
+        v.selection.bg_fill = t.accent_soft;
+        v.selection.stroke = Stroke::new(1.5, t.accent_text);
+        v.hyperlink_color = t.accent_text;
+        v.text_cursor.stroke = Stroke::new(2.0, t.accent);
+    }
     ctx.set_visuals(v);
     ctx.global_style_mut(|s| {
         s.spacing.item_spacing = egui::vec2(6.0, 4.0);
@@ -584,8 +792,33 @@ mod tests {
     #[test]
     fn the_default_highlight_leaves_the_theme_blues_as_designed() {
         let default = filmcraft_engine::settings::parse_hex(filmcraft_engine::settings::DEFAULT_HIGHLIGHT);
-        for k in [ThemeKind::Dark, ThemeKind::Medium, ThemeKind::Light] {
+        for k in [ThemeKind::Dark, ThemeKind::Medium, ThemeKind::Light, ThemeKind::MajlisLight, ThemeKind::MajlisDark] {
             assert_eq!(highlight_blues(&Tokens::for_kind(k).with_appearance(default, false)), highlight_blues(&Tokens::for_kind(k)), "{k:?}");
+            assert_eq!(Tokens::for_kind(k).with_appearance(default, false).accent, Tokens::for_kind(k).accent, "{k:?}");
+        }
+    }
+
+    /// The Al Majlis looks carry the look sheet's exact colours and shapes, and are what a fresh
+    /// profile and the `view.theme.majlisLight` / `view.theme.majlisDark` commands select.
+    #[test]
+    fn majlis_looks_follow_the_look_sheet() {
+        let hex = |v: u32| Color32::from_rgb((v >> 16) as u8, (v >> 8) as u8, v as u8);
+        let l = Tokens::for_kind(ThemeKind::MajlisLight);
+        let d = Tokens::for_kind(ThemeKind::MajlisDark);
+        for (t, canvas, surface, raised, pressed, text, accent_hover) in
+            [(l, 0xF2F1EE, 0xFFFFFF, 0xF6F5F3, 0xE8E7E3, 0x141416, 0x1D4ED8), (d, 0x0D0D0F, 0x17171A, 0x202024, 0x2E2E34, 0xF4F4F2, 0x3B82F6)]
+        {
+            assert_eq!((t.app_bg, t.panel_bg, t.field_bg, t.pressed, t.text), (hex(canvas), hex(surface), hex(raised), hex(pressed), hex(text)));
+            assert_eq!((t.accent, t.accent_hover), (hex(0x2563EB), hex(accent_hover)));
+            assert_eq!((t.r_control, t.r_card, t.r_window, t.r_menu), (8.0, 12.0, 16.0, 12.0));
+            assert_eq!(t.pill(24.0, 2.0), 12.0);
+        }
+        assert!(l.kind.is_light() && !d.kind.is_light());
+        assert_eq!(Tokens::for_kind(ThemeKind::Dark).pill(24.0, 2.0), 2.0, "the Premiere looks keep their shapes");
+        assert_eq!(ThemeKind::default(), ThemeKind::MajlisDark);
+        for k in [ThemeKind::MajlisLight, ThemeKind::MajlisDark] {
+            assert_eq!(ThemeKind::from_pref(k.pref_name()), k);
+            assert_eq!(ThemeKind::from_name(k.pref_name()), Some(k));
         }
     }
 

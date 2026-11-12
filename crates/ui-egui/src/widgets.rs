@@ -343,7 +343,7 @@ pub fn section_header(ui: &mut Ui, id: egui::Id, title: &str, open: bool, t: &To
     let w = ui.available_width();
     let (rect, resp) = ui.allocate_exact_size(vec2(w, 22.0), Sense::click());
     if resp.hovered() {
-        ui.painter().rect_filled(rect, 0.0, t.hover);
+        ui.painter().rect_filled(rect, t.corner(t.r_control, 0.0), t.hover);
     }
     let chev = Rect::from_center_size(pos2(rect.min.x + 10.0, rect.center().y), vec2(12.0, 12.0));
     icons::paint(ui.painter(), chev, if open { Icon::ChevronDown } else { Icon::ChevronRight }, t.text_dim);
@@ -382,9 +382,11 @@ pub fn letter_toggle_clipped(ui: &mut Ui, rect: Rect, clip: Rect, letter: &str, 
     } else {
         Color32::TRANSPARENT
     };
-    p.rect_filled(rect, 2.0, bg);
+    // Al Majlis: a pill chip with a hairline
+    let r = t.pill(rect.height(), 2.0);
+    p.rect_filled(rect, r, bg);
     if !on {
-        p.rect_stroke(rect, 2.0, Stroke::new(1.0, t.separator), StrokeKind::Inside);
+        p.rect_stroke(rect, r, Stroke::new(1.0, t.separator), StrokeKind::Inside);
     }
     p.text(rect.center(), Align2::CENTER_CENTER, letter, Tokens::semibold(10.5), if on { Color32::BLACK } else { t.text_dim });
     resp
@@ -394,7 +396,7 @@ pub fn letter_toggle_clipped(ui: &mut Ui, rect: Rect, clip: Rect, letter: &str, 
 pub fn icon_toggle(ui: &mut Ui, rect: Rect, icon: Icon, on: bool, t: &Tokens, id: egui::Id, on_color: Option<Color32>) -> Response {
     let resp = ui.interact(rect, id, Sense::click());
     if resp.hovered() {
-        ui.painter().rect_filled(rect, 2.0, t.hover);
+        ui.painter().rect_filled(rect, t.corner(t.r_control, 2.0), t.hover);
     }
     let col = if on { on_color.unwrap_or(t.icon) } else { t.text_faint };
     icons::paint(ui.painter(), rect.shrink(rect.width() * 0.16), icon, col);
@@ -430,14 +432,12 @@ pub fn search_field(ui: &mut Ui, text: &mut String, hint: &str, width: f32, t: &
 /// Premiere-style dropdown text ("Fit ▾").
 pub fn dropdown_text(ui: &mut Ui, rect: Rect, text: &str, t: &Tokens, id: egui::Id) -> Response {
     // Premiere: 24 pt, #0e0e0e fill, 1 pt #303030 border, radius 4, chevron at the right.
+    // Al Majlis: radius 8, raised fill, hairline that darkens on hover.
     let resp = ui.interact(rect, id, Sense::click());
-    ui.painter().rect_filled(rect, 4.0, t.field_bg);
-    ui.painter().rect_stroke(
-        rect,
-        4.0,
-        Stroke::new(1.0, if resp.hovered() { Color32::from_rgb(0x4b, 0x4b, 0x4b) } else { t.field_border }),
-        StrokeKind::Inside,
-    );
+    let radius = t.corner(t.r_control, 4.0);
+    let hover_border = if t.kind.is_majlis() { t.text_faint } else { Color32::from_rgb(0x4b, 0x4b, 0x4b) };
+    ui.painter().rect_filled(rect, radius, t.field_bg);
+    ui.painter().rect_stroke(rect, radius, Stroke::new(1.0, if resp.hovered() { hover_border } else { t.field_border }), StrokeKind::Inside);
     ui.painter().text(pos2(rect.min.x + 9.0, rect.center().y), Align2::LEFT_CENTER, text, Tokens::ui(12.0), t.text);
     icons::paint(ui.painter(), Rect::from_center_size(pos2(rect.max.x - 11.0, rect.center().y), vec2(9.0, 9.0)), Icon::ChevronDown, t.text_dim);
     resp
