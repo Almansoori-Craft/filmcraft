@@ -797,7 +797,7 @@ fn command_list(app: &mut FilmcraftApp, ui: &mut egui::Ui, height: f32, t: &Toke
     let rows = app.session.execute("shortcuts.list", json!({})).unwrap_or_default();
     let rows = rows.as_array().cloned().unwrap_or_default();
     let query = app.shortcut_editor.search.trim();
-    let rows: Vec<_> = rows.into_iter().filter(|row| matches_search(row, query)).collect();
+    let rows: Vec<_> = rows.into_iter().filter(|row| matches_search(row, query) && !crate::updates_ui::hidden(row["id"].as_str().unwrap_or(""))).collect();
     let w = ui.available_width();
     // column header
     let (hr, _) = ui.allocate_exact_size(vec2(w, 22.0), Sense::hover());

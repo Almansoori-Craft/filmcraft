@@ -152,7 +152,8 @@ pub const UI_COMMANDS: &[UiCommand] = &[
     uic!("mode.export", "Export", ["File", "Export"], Some("Cmd+M")),
     uic!("help.revealLogFiles", "Reveal Log Files…", ["Help"], None),
     uic!("help.systemCompatibilityReport", "System Compatibility Report…", ["Help"], None),
-    uic!("app.checkForUpdates", "Check for Updates…", ["Help"], None),
+    // Majlis Studio: no menu offers it (`crate::updates_ui::HIDDEN`).
+    uic!("app.checkForUpdates", "Check for Updates…", [], None),
     uic!("app.about", "About Al Majlis Montage", ["Help"], None),
     uic!("app.keyboardShortcuts", "Keyboard Shortcuts…", ["Edit"], Some("Cmd+Alt+K")),
     uic!("app.settings.general", "General…", ["Edit", "Preferences"], Some("Cmd+,")),

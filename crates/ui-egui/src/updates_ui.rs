@@ -9,6 +9,19 @@ use craft_update::updater::{Action, Status, Updater};
 #[cfg(not(target_arch = "wasm32"))]
 use craft_update::{CheckResultDialog, CheckResultResponse};
 
+/// Majlis Studio: updates come only through Al Majlis (owner, 2026-11-12). Off: no check at start,
+/// none from a command, so the app never asks the upstream project's GitHub for releases.
+const UPSTREAM_CHECKS: bool = false;
+
+/// Commands kept out of sight for the same reason: they stay known to scripts and the control
+/// channel, but no menu or shortcut list offers them.
+pub const HIDDEN: &[&str] = &["app.checkForUpdates"];
+
+/// Whether the command `id` is kept out of sight (see [`HIDDEN`]).
+pub fn hidden(id: &str) -> bool {
+    HIDDEN.contains(&id)
+}
+
 pub(crate) struct Runtime {
     #[cfg(not(target_arch = "wasm32"))]
     updater: Updater,
@@ -48,6 +61,9 @@ impl FilmcraftApp {
 }
 
 pub(crate) fn check(app: &mut FilmcraftApp) -> Result<Value, String> {
+    if !UPSTREAM_CHECKS {
+        return Ok(Value::Null);
+    }
     #[cfg(not(target_arch = "wasm32"))]
     {
         app.updates_rt.check_requested = true;
@@ -67,6 +83,9 @@ pub(crate) fn check(app: &mut FilmcraftApp) -> Result<Value, String> {
 pub(crate) fn tick(app: &mut FilmcraftApp, ctx: &egui::Context) {
     #[cfg(not(target_arch = "wasm32"))]
     {
+        if !UPSTREAM_CHECKS {
+            return;
+        }
         let rt = &mut app.updates_rt;
         rt.repaint = Some(ctx.clone());
         if std::mem::take(&mut rt.check_requested) {
@@ -167,5 +186,20 @@ mod tests {
         });
         output.textures_delta.clear();
         assert!(app.updates_rt.updater.prompt_open());
+    }
+
+    /// Majlis Studio (owner, 2026-11-12): neither the check at start nor the command asks
+    /// upstream for releases, and no menu or shortcut list offers the command.
+    #[test]
+    fn upstream_update_checks_are_off_and_hidden() {
+        let mut app = FilmcraftApp::new(filmcraft_engine::Session::default());
+        #[cfg(not(target_arch = "wasm32"))]
+        app.set_startup_update_check(true);
+        check(&mut app).unwrap();
+        tick(&mut app, &egui::Context::default());
+        assert!(!app.updates_rt.manual_window_open);
+        #[cfg(not(target_arch = "wasm32"))]
+        assert_eq!(app.updates_rt.updater.status(), &Status::Idle);
+        assert!(!crate::menus::menu_items(&app).iter().any(|it| hidden(&it.id)));
     }
 }
