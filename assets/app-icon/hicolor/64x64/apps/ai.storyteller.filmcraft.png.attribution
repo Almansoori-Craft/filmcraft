@@ -1,8 +1,8 @@
 asset:        ai.storyteller.filmcraft.png
-title:        FilmCraft app icon, Linux hicolor theme 64 px
-author:       Brandon Thomas (FilmCraft owner), for the FilmCraft project
-source:       original work (drawn by the owner in ArtCraft, then vectorised)
-license:      MIT OR Apache-2.0
+title:        Al Majlis Montage app icon, Linux hicolor theme 64 px
+author:       Al Majlis Studio (UAE Ministry of Energy and Infrastructure)
+source:       Al Majlis Studio icon, made for the Ministry with Higgsfield (Ideogram Vector), 2026-11-12
+license:      See assets/app-icon/LICENSE.txt (Al Majlis Studio icon)
 license-file: assets/app-icon/LICENSE.txt
-added:        2026-10-02 by Claude (agent) for Brandon Thomas
-notes:        Rendered from filmcraft.svg with resvg by packaging/icons.sh.
+added:        2026-11-12 by Claude (agent) for the Al Majlis Studio owner
+notes:        Owner-approved Al Majlis Studio icon; replaces the earlier FilmCraft owl artwork. Rendered from the approved icon's vector at this file's size and tile placement.
