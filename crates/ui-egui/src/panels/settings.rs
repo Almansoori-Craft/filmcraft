@@ -1009,7 +1009,7 @@ mod tests {
         h.get_by_label("Light").click();
         h.run_steps(3);
         assert_eq!(h.state().session.prefs.appearance.appearance_mode, "light");
-        assert_eq!(h.state().session.prefs.appearance.dark_theme, "darkest");
+        assert_eq!(h.state().session.prefs.appearance.dark_theme, "majlisDark", "the Al Majlis default dark theme stays");
     }
 
     /// #457: on a desktop that reports 150%, UI Scale 100% makes a point one physical pixel. It is
@@ -1075,24 +1075,24 @@ mod tests {
         }));
         app.session.execute("prefs.set", json!({"key": "appearance.appearanceMode", "value": "auto"})).unwrap();
         app.apply_prefs(&ctx);
-        assert_eq!(app.tokens.kind, ThemeKind::Light);
+        assert_eq!(app.tokens.kind, ThemeKind::MajlisLight);
         assert!(!app.ui.dark);
         assert_eq!(ctx.theme(), egui::Theme::Light, "egui's style follows FilmCraft's choice");
         system.store(1, Ordering::Relaxed);
         app.apply_prefs(&ctx);
-        assert_eq!(app.tokens.kind, ThemeKind::Dark);
+        assert_eq!(app.tokens.kind, ThemeKind::MajlisDark);
         assert_eq!(ctx.theme(), egui::Theme::Dark);
         system.store(2, Ordering::Relaxed);
         app.apply_prefs(&ctx);
-        assert_eq!(app.tokens.kind, ThemeKind::Light);
+        assert_eq!(app.tokens.kind, ThemeKind::MajlisLight);
         system.store(0, Ordering::Relaxed);
         app.apply_prefs(&ctx);
-        assert_eq!(app.tokens.kind, ThemeKind::Dark, "no answer: dark");
+        assert_eq!(app.tokens.kind, ThemeKind::MajlisDark, "no answer: dark");
         // a fixed mode ignores the system
         app.session.execute("prefs.set", json!({"key": "appearance.appearanceMode", "value": "dark"})).unwrap();
         system.store(2, Ordering::Relaxed);
         app.apply_prefs(&ctx);
-        assert_eq!(app.tokens.kind, ThemeKind::Dark);
+        assert_eq!(app.tokens.kind, ThemeKind::MajlisDark);
     }
 
     #[test]
